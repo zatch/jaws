@@ -25,11 +25,23 @@ var jaws = (function(jaws) {
    * @returns {boolean} If the two objects are colliding or not
    */
   jaws.collideOneWithOne = function(object1, object2) {
-    if (object1.radius && object2.radius && object1 !== object2 && jaws.collideCircles(object1, object2))
-      return true;
+    if (object1.radius && object2.radius) {
+      if (object1 !== object2 && jaws.collideCircles(object1, object2)) {
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
 
-    if (object1.rect && object2.rect && object1 !== object2 && jaws.collideRects(object1.rect(), object2.rect()))
-      return true;
+    if (object1.rect && object2.rect) {
+      if (object1 !== object2 && jaws.collideRects(object1.rect(), object2.rect())) {
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
 
     return false;
   };
