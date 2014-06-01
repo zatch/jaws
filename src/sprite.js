@@ -282,6 +282,10 @@ jaws.Sprite.prototype.setAnchor = function(value) {
     this.anchor_y = a[1]
     if(this.image) this.cacheOffsets();
   }
+  else if (value.length == 2) {
+    this.anchor_x = value[0]
+    this.anchor_y = value[1]
+  }
   return this
 }
 
