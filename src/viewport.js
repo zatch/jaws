@@ -151,7 +151,7 @@ jaws.Viewport = function ViewPort(options) {
   */
   this.apply = function(func) {
     this.context.save()
-    this.context.translate(-this.x, -this.y)
+    this.context.translate(-this.x + this.x_offset, -this.y+this.y_offset)
     func()
     this.context.restore()
   };
@@ -204,7 +204,9 @@ jaws.Viewport.prototype.default_options = {
   max_x: null,
   max_y: null,
   x: 0,
-  y: 0
+  y: 0,
+  x_offset: 0,
+  y_offset: 0
 };
 
 jaws.Viewport.prototype.toString = function() { return "[Viewport " + this.x.toFixed(2) + ", " + this.y.toFixed(2) + ", " + this.width + ", " + this.height + "]" }
