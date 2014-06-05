@@ -15,6 +15,7 @@
    load(root+"core.js")
   .then(root+"sprite.js")
   .then(root+"input.js", 
+        root+"gamepad.js", 
         root+"assets.js", 
         root+"game_loop.js", 
         root+"rect.js", 

@@ -328,6 +328,9 @@ var jaws = (function(jaws) {
     jaws.log.info("setupInput()", true);
     jaws.setupInput();
 
+    jaws.log.info("setupGamepadSupport()", true);
+    jaws.setupGamepadSupport(fps);
+
     /* Callback for when one single asset has been loaded */
     function assetProgress(src, percent_done) {
       jaws.log.info(percent_done + "%: " + src, true);

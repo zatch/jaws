@@ -81,6 +81,7 @@ jaws.GameLoop = function GameLoop(game_object, options, game_state_setup_options
     that.fps = mean_value.add(1000/that.tick_duration).get()
 
     if(!stopped && !paused) {
+      jaws.updateGamepads();
       if(game_object.update) { game_object.update() }
       if(game_object.draw)   { game_object.draw() }
       that.ticks++
