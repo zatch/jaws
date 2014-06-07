@@ -340,7 +340,17 @@ jaws.Sprite.prototype.draw = function() {
       this.context.fillStyle = "rgba(0,0,0,0)";
       this.context.strokeStyle = "rgba(0, 255, 0, 100)";
       this.context.lineWidth = 1;
-      this.context.circle(this.width * this.anchor[0], this.height * this.anchor[1], this.radius);
+      this.context.beginPath();
+      this.context.arc(
+        this.width  * this.anchor[0], 
+        this.height * this.anchor[1], 
+        this.radius, 
+        0, 
+        2 * Math.PI, 
+        false
+      );
+      this.context.fill();
+      this.context.stroke();
     }
   }
 
