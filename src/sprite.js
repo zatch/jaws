@@ -322,6 +322,38 @@ jaws.Sprite.prototype.draw = function() {
   this.context.globalAlpha = this.alpha
   this.context.translate(-this.left_offset, -this.top_offset) // Needs to be separate from above translate call cause of flipped
   this.context.drawImage(this.image, 0, 0, this.width, this.height)
+
+  // Draw debug info if applicable
+  if (jaws.debug || this.debug) {
+    this.context.lineWidth = 1;
+    
+    // Translate the sprite rect so when we're drawing with a Viewport applied,
+    // we our debug rectangle is drawn with respect to the anchor point of
+    // this Sprite.
+    var rect = this.rect();
+    rect.x = 0;
+    rect.y = 0;
+    rect.draw();
+
+    // If this Sprite has a radius property, draw a debug circle.
+    if( this.radius ) {
+      this.context.fillStyle = "rgba(0,0,0,0)";
+      this.context.strokeStyle = "rgba(0, 255, 0, 100)";
+      this.context.lineWidth = 1;
+      this.context.beginPath();
+      this.context.arc(
+        this.width  * this.anchor[0], 
+        this.height * this.anchor[1], 
+        this.radius, 
+        0, 
+        2 * Math.PI, 
+        false
+      );
+      this.context.fill();
+      this.context.stroke();
+    }
+  }
+
   this.context.restore()
   return this
 }
