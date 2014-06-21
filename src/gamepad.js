@@ -9,8 +9,9 @@ inputMap["Xbox 360"] = {
 };
 // Account for inputs that are mapped incorrectly by the browser.
 if (navigator.userAgent.indexOf('Firefox') !== -1) {
-	inputMap["Xbox 360"].joysticks.right = {
-		x: 3, y: 4
+	inputMap["Xbox 360"].joysticks = {
+		"left" : { x: 1, y: 0 },
+		"right": { x: 3, y: 2 }
 	};
 }
 
