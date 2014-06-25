@@ -185,6 +185,18 @@ var jaws = (function(jaws) {
     }
 
     /**
+     * Determine whether an asset has already been added to the asset loader.
+     * @param  {String}  src Asset URL.
+     * @return {Boolean}     Whether the asset has been loaded.
+     */
+    self.isAdded = function (src) {
+      for(var i=0, ilen=self.src_list.length; i<ilen; i++) {
+        if(self.src_list[i] == src) return true;
+      }
+      return false;
+    };
+
+    /**
      * Add URL(s) to asset listing for later loading
      * @public
      * @param {string|array|arguments} src The resource URL(s) to add to the asset listing
@@ -203,8 +215,17 @@ var jaws = (function(jaws) {
           self.add(list[i]);
         }
         else {
-          if(jaws.isString(list[i]))  { self.src_list.push(list[i]) }
-          else                        { jaws.log.error("jaws.assets.add: Neither String nor Array. Incorrect URL resource " + src) }
+          if(jaws.isString(list[i]))  { 
+            // Only add our asset to the list if it hasn't been added previously.
+            if(!self.isAdded(list[i])) {
+              self.src_list.push(list[i]);
+            } else {
+              jaws.log.warn("jaws.asset.add: Resource '" + list[i] + "' added multipled times.");
+            }
+          }
+          else { 
+            jaws.log.error("jaws.assets.add: Neither String nor Array. Incorrect URL resource " + src); 
+          }
         }
       }
 
