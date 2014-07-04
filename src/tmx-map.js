@@ -263,8 +263,8 @@ jaws.TMXMap = function (file, callback) {
 
                     instile.image = _cutSprite(
                         loader.get(instileset.image.source),
-                        instile.x,
-                        instile.y,
+                        instile.px,
+                        instile.py,
                         instile.width,
                         instile.height
                     );
