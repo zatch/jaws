@@ -22,12 +22,19 @@ jaws.TMXMap = function (file, callback) {
 
     /**
      * Return the givenlayer as a jaws.TileMap.
-     * @param  {String} layer The layer to convert to a TileMap
-     * @return {TileMap}      A jaws.TileMap
+     * @param  {String} layerName The layer to convert to a TileMap.
+     * @return {TileMap}          A jaws.TileMap
      */
-    // TODO: Allow layer name to be given instead of layer object.
-    self.layerAsTileMap = function (layer) {
-        var tileMap, i, ilen, tile, sprite;
+    self.layerAsTileMap = function (layerName) {
+        var tileMap, i, ilen, tile, layer;
+
+        for(i=0, ilen=self.layers.length; i<ilen; i++) {
+            if(self.layers[i].name === layerName) {
+                layer = self.layers[i];
+                break;
+            }
+        }
+        if(!layer) throw "Couldn't find layer with name '" + layerName + "'";
 
         tileMap = new jaws.TileMap({
             cell_size: [self.tilewidth, self.tileheight],
