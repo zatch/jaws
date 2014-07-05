@@ -2,6 +2,7 @@
 
 var jaws = (function (jaws) {
 
+// TODO: Provide callbacks for error and progress (i.e. on each asset load).
 jaws.TMXMap = function (file, callback) {
 
     var self   = this,
@@ -34,7 +35,8 @@ jaws.TMXMap = function (file, callback) {
                 break;
             }
         }
-        if(!layer) throw "Couldn't find layer with name '" + layerName + "'";
+
+        if(!layer) return undefined;
 
         tileMap = new jaws.TileMap({
             cell_size: [self.tilewidth, self.tileheight],
