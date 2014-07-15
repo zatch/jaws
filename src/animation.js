@@ -33,9 +33,9 @@ jaws.Animation = function Animation(options) {
   jaws.parseOptions(this, options, this.default_options);
 
   if(options.sprite_sheet) {
-    var sprite_sheet = new jaws.SpriteSheet({image: options.sprite_sheet, scale_image: this.scale_image, frame_size: this.frame_size, orientation: this.orientation, offset: this.offset})
-    this.frames = sprite_sheet.frames
-    this.frame_size = sprite_sheet.frame_size
+    this.sprite_sheet = new jaws.SpriteSheet({image: options.sprite_sheet, scale_image: this.scale_image, frame_size: this.frame_size, orientation: this.orientation, offset: this.offset})
+    this.frames = this.sprite_sheet.frames
+    this.frame_size = this.sprite_sheet.frame_size
   }
 
   if(options.scale_image) {
@@ -58,6 +58,22 @@ jaws.Animation = function Animation(options) {
     }
   }
 }
+
+/**
+ * Adds a named layer to the SpriteSheet
+ *
+ */
+jaws.Animation.prototype.setLayer = function(name, layerSpriteSheet, subsets) {
+  this.sprite_sheet.setLayer(name, layerSpriteSheet);
+  this.frames = this.sprite_sheet.frames;
+  
+  if(subsets) {
+    for(var subset in subsets) {
+      start_stop = subsets[subset];
+      this.subsets[subset] = this.slice(start_stop[0], start_stop[1]);
+    }
+  }
+};
 
 jaws.Animation.prototype.default_options = {
   frames: [],
