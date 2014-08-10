@@ -1,4 +1,4 @@
-/* Built at 2014-01-03 11:51:42 +0100 */
+/* Built at 2014-08-08 18:39:18 -0400 */
 /**
  * @namespace JawsJS core functions.
  *
@@ -328,6 +328,9 @@ var jaws = (function(jaws) {
 
     jaws.log.info("setupInput()", true);
     jaws.setupInput();
+
+    jaws.log.info("setupGamepadSupport()", true);
+    jaws.setupGamepadSupport(fps);
 
     /* Callback for when one single asset has been loaded */
     function assetProgress(src, percent_done) {
@@ -1183,6 +1186,18 @@ var jaws = (function(jaws) {
     }
 
     /**
+     * Determine whether an asset has already been added to the asset loader.
+     * @param  {String}  src Asset URL.
+     * @return {Boolean}     Whether the asset has been loaded.
+     */
+    self.isAdded = function (src) {
+      for(var i=0, ilen=self.src_list.length; i<ilen; i++) {
+        if(self.src_list[i] == src) return true;
+      }
+      return false;
+    };
+
+    /**
      * Add URL(s) to asset listing for later loading
      * @public
      * @param {string|array|arguments} src The resource URL(s) to add to the asset listing
@@ -1201,8 +1216,17 @@ var jaws = (function(jaws) {
           self.add(list[i]);
         }
         else {
-          if(jaws.isString(list[i]))  { self.src_list.push(list[i]) }
-          else                        { jaws.log.error("jaws.assets.add: Neither String nor Array. Incorrect URL resource " + src) }
+          if(jaws.isString(list[i]))  { 
+            // Only add our asset to the list if it hasn't been added previously.
+            if(!self.isAdded(list[i])) {
+              self.src_list.push(list[i]);
+            } else {
+              jaws.log.warn("jaws.asset.add: Resource '" + list[i] + "' added multipled times.");
+            }
+          }
+          else { 
+            jaws.log.error("jaws.assets.add: Neither String nor Array. Incorrect URL resource " + src); 
+          }
         }
       }
 
@@ -1606,6 +1630,7 @@ jaws.GameLoop = function GameLoop(game_object, options, game_state_setup_options
     that.fps = mean_value.add(1000/that.tick_duration).get()
 
     if(!stopped && !paused) {
+      jaws.updateGamepads();
       if(game_object.update) { game_object.update() }
       if(game_object.draw)   { game_object.draw() }
       that.ticks++
@@ -2068,6 +2093,10 @@ jaws.Sprite.prototype.setAnchor = function(value) {
     this.anchor_y = a[1]
     if(this.image) this.cacheOffsets();
   }
+  else if (value.length == 2) {
+    this.anchor_x = value[0]
+    this.anchor_y = value[1]
+  }
   return this
 }
 
@@ -2104,6 +2133,38 @@ jaws.Sprite.prototype.draw = function() {
   this.context.globalAlpha = this.alpha
   this.context.translate(-this.left_offset, -this.top_offset) // Needs to be separate from above translate call cause of flipped
   this.context.drawImage(this.image, 0, 0, this.width, this.height)
+
+  // Draw debug info if applicable
+  if (jaws.debug || this.debug) {
+    this.context.lineWidth = 1;
+    
+    // Translate the sprite rect so when we're drawing with a Viewport applied,
+    // we our debug rectangle is drawn with respect to the anchor point of
+    // this Sprite.
+    var rect = this.rect();
+    rect.x = 0;
+    rect.y = 0;
+    rect.draw();
+
+    // If this Sprite has a radius property, draw a debug circle.
+    if( this.radius ) {
+      this.context.fillStyle = "rgba(0,0,0,0)";
+      this.context.strokeStyle = "rgba(0, 255, 0, 100)";
+      this.context.lineWidth = 1;
+      this.context.beginPath();
+      this.context.arc(
+        this.width  * this.anchor[0], 
+        this.height * this.anchor[1], 
+        this.radius, 
+        0, 
+        2 * Math.PI, 
+        false
+      );
+      this.context.fill();
+      this.context.stroke();
+    }
+  }
+
   this.context.restore()
   return this
 }
@@ -2268,28 +2329,76 @@ jaws.SpriteSheet = function SpriteSheet(options) {
   /* Detect framesize from filename, example: droid_10x16.png means each frame is 10px high and 16px wide */
   if(jaws.isString(this.image) && !options.frame_size) {
     var regexp = new RegExp("_(\\d+)x(\\d+)", "g");
-    var sizes = regexp.exec(this.image)
-    this.frame_size = []
-    this.frame_size[0] = parseInt(sizes[1])
-    this.frame_size[1] = parseInt(sizes[2])
+    var sizes = regexp.exec(this.image);
+    this.frame_size = [];
+    this.frame_size[0] = parseInt(sizes[1]);
+    this.frame_size[1] = parseInt(sizes[2]);
   }
-
-  this.image = jaws.isDrawable(this.image) ? this.image : jaws.assets.data[this.image]
+  
   if(this.scale_image) {
-    var image = (jaws.isDrawable(this.image) ? this.image : jaws.assets.get(this.image))
-    this.frame_size[0] *= this.scale_image
-    this.frame_size[1] *= this.scale_image
-    this.image = jaws.retroScaleImage(image, this.scale_image)
+    this.frame_size[0] *= this.scale_image;
+    this.frame_size[1] *= this.scale_image;
   }
+  
+  this.setLayer("main", this.image);
+  this.image = this.layers["main"];
+  
+  this.renderFrames();
+};
 
-  var index = 0
-  this.frames = []
+/**
+ * Adds a named layer to the SpriteSheet
+ *
+ */
+jaws.SpriteSheet.prototype.setLayer = function(name, image) {
+  var img = jaws.isDrawable(image) ? image : jaws.assets.data[image];
+  if(this.scale_image) {
+    img = jaws.retroScaleImage(img, this.scale_image);
+  }
+  
+  this.layers[name] = img;
+  
+  var isOrdered = false;
+  for (var lcv = 0; lcv < this.layerOrder.length; lcv++) {
+    if (name === this.layerOrder[lcv]) {
+      isOrdered = true;
+    }
+    
+    break;
+  }
+  if (!isOrdered) {
+    this.layerOrder.push(name);
+  }
+  
+  this.renderFrames();
+};
 
+/**
+ * Allows changing the layer order.
+ *
+ */
+jaws.SpriteSheet.prototype.setLayerOrder = function(layerOrder) {
+  this.layerOrder = layerOrder;
+};
+
+jaws.SpriteSheet.prototype.default_options = {
+  image: null,
+  orientation: "down",
+  frame_size: [32,32],
+  offset: 0,
+  scale_image: null,
+  layers: {},
+  layerOrder: ["main"]
+};
+
+jaws.SpriteSheet.prototype.renderFrames = function() {
+  this.frames = [];
+  
   // Cut out tiles from Top -> Bottom
   if(this.orientation == "down") {  
     for(var x=this.offset; x < this.image.width; x += this.frame_size[0]) {
       for(var y=0; y < this.image.height; y += this.frame_size[1]) {
-        this.frames.push( cutImage(this.image, x, y, this.frame_size[0], this.frame_size[1]) )
+        this.frames.push( cutImage(this.layers, this.layerOrder, x, y, this.frame_size[0], this.frame_size[1]) );
       }
     }
   }
@@ -2297,35 +2406,30 @@ jaws.SpriteSheet = function SpriteSheet(options) {
   else {
     for(var y=this.offset; y < this.image.height; y += this.frame_size[1]) {
       for(var x=0; x < this.image.width; x += this.frame_size[0]) {
-        this.frames.push( cutImage(this.image, x, y, this.frame_size[0], this.frame_size[1]) )
+        this.frames.push( cutImage(this.layers, this.layerOrder, x, y, this.frame_size[0], this.frame_size[1]) );
       }
     }
   }
-}
-
-jaws.SpriteSheet.prototype.default_options = {
-  image: null,
-  orientation: "down",
-  frame_size: [32,32],
-  offset: 0,
-  scale_image: null
-}
+  
+  return this.frames;
+};
 
 /** @private
  * Cut out a rectangular piece of a an image, returns as canvas-element 
  */
-function cutImage(image, x, y, width, height) {
-  var cut = document.createElement("canvas")
-  cut.width = width
-  cut.height = height
+function cutImage(layers, layerOrder, x, y, width, height) {
+  var cut = document.createElement("canvas");
+  cut.width = width;
+  cut.height = height;
   
-  var ctx = cut.getContext("2d")
-  ctx.drawImage(image, x, y, width, height, 0, 0, cut.width, cut.height)
-  
-  return cut
-};
+  var ctx = cut.getContext("2d");
+  for (var lcv = 0; lcv < layerOrder.length; lcv++) {
+    ctx.drawImage(layers[layerOrder[lcv]], x, y, width, height, 0, 0, cut.width, cut.height);
+  }
+  return cut;
+}
 
-jaws.SpriteSheet.prototype.toString = function() { return "[SpriteSheet " + this.frames.length + " frames]" }
+jaws.SpriteSheet.prototype.toString = function() { return "[SpriteSheet " + this.frames.length + " frames]"; };
 
 return jaws;
 })(jaws || {});
@@ -2365,9 +2469,9 @@ jaws.Animation = function Animation(options) {
   jaws.parseOptions(this, options, this.default_options);
 
   if(options.sprite_sheet) {
-    var sprite_sheet = new jaws.SpriteSheet({image: options.sprite_sheet, scale_image: this.scale_image, frame_size: this.frame_size, orientation: this.orientation, offset: this.offset})
-    this.frames = sprite_sheet.frames
-    this.frame_size = sprite_sheet.frame_size
+    this.sprite_sheet = new jaws.SpriteSheet({image: options.sprite_sheet, scale_image: this.scale_image, frame_size: this.frame_size, orientation: this.orientation, offset: this.offset})
+    this.frames = this.sprite_sheet.frames
+    this.frame_size = this.sprite_sheet.frame_size
   }
 
   if(options.scale_image) {
@@ -2390,6 +2494,22 @@ jaws.Animation = function Animation(options) {
     }
   }
 }
+
+/**
+ * Adds a named layer to the SpriteSheet
+ *
+ */
+jaws.Animation.prototype.setLayer = function(name, layerSpriteSheet, subsets) {
+  this.sprite_sheet.setLayer(name, layerSpriteSheet);
+  this.frames = this.sprite_sheet.frames;
+  
+  if(subsets) {
+    for(var subset in subsets) {
+      start_stop = subsets[subset];
+      this.subsets[subset] = this.slice(start_stop[0], start_stop[1]);
+    }
+  }
+};
 
 jaws.Animation.prototype.default_options = {
   frames: [],
@@ -2651,7 +2771,7 @@ jaws.Viewport = function ViewPort(options) {
   */
   this.apply = function(func) {
     this.context.save()
-    this.context.translate(-this.x, -this.y)
+    this.context.translate(-this.x + this.x_offset, -this.y+this.y_offset)
     func()
     this.context.restore()
   };
@@ -2704,7 +2824,9 @@ jaws.Viewport.prototype.default_options = {
   max_x: null,
   max_y: null,
   x: 0,
-  y: 0
+  y: 0,
+  x_offset: 0,
+  y_offset: 0
 };
 
 jaws.Viewport.prototype.toString = function() { return "[Viewport " + this.x.toFixed(2) + ", " + this.y.toFixed(2) + ", " + this.width + ", " + this.height + "]" }
@@ -2739,11 +2861,23 @@ var jaws = (function(jaws) {
    * @returns {boolean} If the two objects are colliding or not
    */
   jaws.collideOneWithOne = function(object1, object2) {
-    if (object1.radius && object2.radius && object1 !== object2 && jaws.collideCircles(object1, object2))
-      return true;
+    if (object1.radius && object2.radius) {
+      if (object1 !== object2 && jaws.collideCircles(object1, object2)) {
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
 
-    if (object1.rect && object2.rect && object1 !== object2 && jaws.collideRects(object1.rect(), object2.rect()))
-      return true;
+    if (object1.rect && object2.rect) {
+      if (object1 !== object2 && jaws.collideRects(object1.rect(), object2.rect())) {
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
 
     return false;
   };
@@ -4028,4 +4162,317 @@ var jaws = (function(jaws) {
 if (typeof module !== "undefined" && ('exports' in module)) {
   module.exports = jaws.QuadTree;
 }
+var jaws = (function(jaws) {
+
+  /**
+   * @class Create and access tilebased 2D maps with very fast access of invidual tiles. "Field Summary" contains options for the TileMap()-constructor.
+   *
+   * @property {array} cell_size        Size of each cell in tilemap, defaults to [32,32]
+   * @property {array} size             Size of tilemap, defaults to [100,100]
+   * @property {function} sortFunction  Function used by sortCells() to sort cells, defaults to no sorting
+   *
+   * @example
+   * var tile_map = new TileMap({size: [10, 10], cell_size: [16,16]})
+   * var sprite = new jaws.Sprite({x: 40, y: 40})
+   * var sprite2 = new jaws.Sprite({x: 41, y: 41})
+   * tile_map.push(sprite)
+   *
+   * tile_map.at(10,10)  // []
+   * tile_map.at(40,40)  // [sprite]
+   * tile_map.cell(0,0)  // []
+   * tile_map.cell(1,1)  // [sprite]
+   *
+   */
+  jaws.TileMap = function TileMap(options) {
+    if( !(this instanceof arguments.callee) ) return new arguments.callee( options );
+
+    jaws.parseOptions(this, options, this.default_options);
+    this.cells = new Array(this.size[0]);
+
+    for(var col=0; col < this.size[0]; col++) {
+      this.cells[col] = new Array(this.size[1]);
+      for(var row=0; row < this.size[1]; row++) {
+        this.cells[col][row] = [] // populate each cell with an empty array
+      }
+    }
+  }
+
+  jaws.TileMap.prototype.default_options = {
+    cell_size: [32,32],
+    size: [100,100],
+    sortFunction: null
+  }
+
+  /** Clear all cells in tile map */
+  jaws.TileMap.prototype.clear = function() {
+    for(var col=0; col < this.size[0]; col++) {
+      for(var row=0; row < this.size[1]; row++) {
+        this.cells[col][row] = [];
+      }
+    }
+  }
+
+  /** Sort arrays in each cell in tile map according to sorter-function (see Array.sort) */
+  jaws.TileMap.prototype.sortCells = function(sortFunction) {
+    for(var col=0; col < this.size[0]; col++) {
+      for(var row=0; row < this.size[1]; row++) {
+        this.cells[col][row].sort( sortFunction )
+      }
+    }
+  }
+
+  /**
+   * Push obj (or array of objs) into our cell-grid.
+   *
+   * Tries to read obj.x and obj.y to calculate what cell to occopy
+   */
+  jaws.TileMap.prototype.push = function(obj) {
+    var that = this;
+    if(obj.forEach) { 
+      obj.forEach( function(item) { that.push(item) } );
+      return obj;
+    }
+    if(obj.rect) {
+      return this.pushAsRect(obj, obj.rect());
+    }
+    else {
+      var col = parseInt(obj.x / this.cell_size[0]);
+      var row = parseInt(obj.y / this.cell_size[1]);
+      return this.pushToCell(col, row, obj);
+    }
+  }
+  /** 
+   * Push objects into tilemap.
+   * Disregard height and width and only use x/y when calculating cell-position
+   */
+  jaws.TileMap.prototype.pushAsPoint = function(obj) {
+    if(Array.isArray(obj)) { 
+      for(var i=0; i < obj.length; i++) { this.pushAsPoint(obj[i]) }
+      return obj;
+    }
+    else {
+      var col = parseInt(obj.x / this.cell_size[0]);
+      var row = parseInt(obj.y / this.cell_size[1]);
+      return this.pushToCell(col, row, obj);
+    }
+  }
+
+  /** push obj into cells touched by rect */
+  jaws.TileMap.prototype.pushAsRect = function(obj, rect) {
+    var from_col = parseInt(rect.x / this.cell_size[0]);
+    var to_col = parseInt((rect.right-1) / this.cell_size[0]); // -1
+    //jaws.log("rect.right: " + rect.right + " from/to col: " + from_col + " " + to_col, true)
+
+    for(var col = from_col; col <= to_col; col++) {
+      var from_row = parseInt(rect.y / this.cell_size[1]);
+      var to_row = parseInt((rect.bottom-1) / this.cell_size[1]); // -1
+
+      //jaws.log("rect.bottom " + rect.bottom + " from/to row: " + from_row + " " + to_row, true)
+      for(var row = from_row; row <= to_row; row++) {
+        // console.log("pushAtRect() col/row: " + col + "/" + row + " - " + this.cells[col][row])
+        this.pushToCell(col, row, obj);
+      }
+    }
+    return obj
+  }
+
+  /** 
+   * Push obj to a specific cell specified by col and row 
+   * If cell is already occupied we create an array and push to that
+   */
+  jaws.TileMap.prototype.pushToCell = function(col, row, obj) {
+    this.cells[col][row].push(obj);
+    if(this.sortFunction) this.cells[col][row].sort(this.sortFunction);
+    return this
+  }
+
+  //
+  // READERS
+  // 
+
+  /** Get objects in cell that exists at coordinates x / y  */
+  jaws.TileMap.prototype.at = function(x, y) {
+    var col = parseInt(x / this.cell_size[0]);
+    var row = parseInt(y / this.cell_size[1]);
+    // console.log("at() col/row: " + col + "/" + row)
+    return this.cells[col][row];
+  }
+
+  /** Returns occupants of all cells touched by 'rect' */
+  jaws.TileMap.prototype.atRect = function(rect) {
+    var objects = [];
+    var items;
+
+    try {
+      var from_col = parseInt(rect.x / this.cell_size[0]);
+      if (from_col < 0) {
+        from_col = 0;
+      }
+      var to_col = parseInt(rect.right / this.cell_size[0]);
+      if (to_col >= this.size[0]) {
+        to_col = this.size[0] - 1;
+      }
+      var from_row = parseInt(rect.y / this.cell_size[1]);
+      if (from_row < 0) {
+        from_row = 0;
+      }
+      var to_row = parseInt(rect.bottom / this.cell_size[1]);
+      if (to_row >= this.size[1]) {
+        to_row = this.size[1] - 1;
+      }
+
+      for(var col = from_col; col <= to_col; col++) {
+        for(var row = from_row; row <= to_row; row++) {
+          this.cells[col][row].forEach( function(item, total) { 
+            if(objects.indexOf(item) == -1) { objects.push(item) }
+          })
+        }
+      }
+    }
+    catch(e) {
+      // ... problems
+    }
+    return objects
+  }
+
+  /** Returns all objects in tile map */
+  jaws.TileMap.prototype.all = function() {
+    var all = [];
+    for(var col=0; col < this.size[0]; col++) {
+      for(var row=0; row < this.size[1]; row++) {
+        this.cells[col][row].forEach( function(element, total) {
+          all.push(element)
+        });
+      }
+    }
+    return all
+  }
+
+  /** Get objects in cell at col / row */
+  jaws.TileMap.prototype.cell = function(col, row) {
+    return this.cells[col][row]
+  }
+
+  /** Debugstring for TileMap() */
+  jaws.TileMap.prototype.toString = function() { return "[TileMap " + this.size[0] + " cols, " + this.size[1] + " rows]" }
+
+  return jaws;
+})(jaws || {});
+
+// Support CommonJS require()
+if(typeof module !== "undefined" && ('exports' in module)) { module.exports = jaws.TileMap }
+var jaws = (function(jaws) {
+
+var inputMap = {};
+inputMap["Xbox 360"] = {
+	"joysticks": {
+		"left" : { x: 0, y: 1 },
+		"right": { x: 2, y: 3 }
+	}
+};
+// Account for inputs that are mapped incorrectly by the browser.
+if (navigator.userAgent.indexOf('Firefox') !== -1) {
+	inputMap["Xbox 360"].joysticks = {
+		"left" : { x: 1, y: 0 },
+		"right": { x: 3, y: 2 }
+	};
+}
+
+var browserGamepads;
+var gamepads = {};
+var gamepadTypes = ["Xbox 360"];
+var connectMethod;
+
+function addGamepad(gamepad) {
+	for (var lcv = 0; lcv < gamepadTypes.length; lcv++) {
+		if (gamepad.id.toLowerCase().indexOf(gamepadTypes[lcv].toLowerCase()) !== -1) {
+			// Modify Gamepad object
+			gamepad.type = gamepadTypes[lcv];
+		}
+	}
+	if (!gamepad.type) { gamepad.type = "default"; }
+	
+	gamepads[gamepad.index] = gamepad;
+	console.log("Gamepad connected at index %d: %s. %d buttons, %d axes.",
+	gamepad.index, gamepad.id,
+	gamepad.buttons.length, gamepad.axes.length);
+	
+	console.log(gamepads);
+}
+
+function removeGamepad(gamepad) {
+	delete gamepads[gamepad.index];
+}
+
+function connectHandler(e) {
+	addGamepad(e.gamepad);
+}
+
+function disconnectHandler(e) {
+	removeGamepad(e.gamepad);
+}
+
+function scanGamepads() {
+	browserGamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+	for (var i = 0; i < browserGamepads.length; i++) {
+		if (browserGamepads[i]) {
+			if (!(browserGamepads[i].index in gamepads)) {
+				addGamepad(browserGamepads[i]);
+			} else {
+				gamepads[browserGamepads[i].index] = browserGamepads[i];
+			}
+		}
+	}
+}
+	
+/** @private
+ * Start listening for gamepads.
+ */
+jaws.setupGamepadSupport = function(fps) {
+	// Chrome doesn't implement Gamepad events (yet?).
+	connectMethod = (navigator.webkitGetGamepads) ? "poll" : "event";
+	
+	if (connectMethod === "event") {
+		window.addEventListener("gamepadconnected", connectHandler);
+		window.addEventListener("gamepaddisconnected", disconnectHandler);
+	}
+};
+
+jaws.updateGamepads = function() {
+	if (connectMethod === "poll") {
+		scanGamepads();
+	}
+};
+
+jaws.gamepadButtonPressed = function(button) {
+	if (typeof(button) == "object") {
+		return button.pressed;
+	}
+	return button == 1.0;
+};
+
+jaws.gamepadReadJoystick = function(gamepad, joystick) {
+	// Accept either a Gamepad object or index.
+	if (typeof(gamepad) !== "object") { gamepad = gamepads[gamepad]; }
+	if (typeof(options) !== "object") { options = []; }
+	
+	var mappings = inputMap[gamepad.type].joysticks[joystick];
+	var analogX = gamepad.axes[mappings.x];
+	var analogY = gamepad.axes[mappings.y];
+	
+	var angle = Math.atan2(analogX, analogY);
+	var magnitude = Math.sqrt(analogX*analogX+analogY*analogY);
+	
+	return {
+		analogX: analogX,
+		analogY: analogY,
+		angle: angle,
+		magnitude: magnitude
+	};
+};
+
+jaws.gamepads = gamepads;
+
+return jaws;
+})(jaws || {});
 ;window.addEventListener("load", function() { if(jaws.onload) jaws.onload(); }, false);
