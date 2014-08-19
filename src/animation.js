@@ -53,11 +53,11 @@ jaws.Animation = function Animation(options) {
   if(options.subsets) {
     this.subsets = {}
     for(subset in options.subsets) {
-      start_stop = options.subsets[subset]
-      this.subsets[subset] = this.slice(start_stop[0], start_stop[1])
+      start_stop = options.subsets[subset];
+      this.subsets[subset] = this.slice(start_stop[0], start_stop[1]);
     }
   }
-}
+};
 
 /**
  * Adds a named layer to the SpriteSheet

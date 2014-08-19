@@ -1,4 +1,4 @@
-/* Built at 2014-08-16 18:50:21 -0400 */
+/* Built at 2014-08-18 20:55:56 -0400 */
 /**
  * @namespace JawsJS core functions.
  *
@@ -2351,23 +2351,35 @@ jaws.SpriteSheet = function SpriteSheet(options) {
  *
  */
 jaws.SpriteSheet.prototype.setLayer = function(name, image) {
-  var img = jaws.isDrawable(image) ? image : jaws.assets.data[image];
-  if(this.scale_image) {
-    img = jaws.retroScaleImage(img, this.scale_image);
-  }
-  
-  this.layers[name] = img;
-  
-  var isOrdered = false;
-  for (var lcv = 0; lcv < this.layerOrder.length; lcv++) {
-    if (name === this.layerOrder[lcv]) {
-      isOrdered = true;
+  // Add layer if image is provided and valid
+  if (image) {
+    var img = jaws.isDrawable(image) ? image : jaws.assets.data[image];
+    if(this.scale_image) {
+      img = jaws.retroScaleImage(img, this.scale_image);
     }
     
-    break;
+    this.layers[name] = img;
+    
+    var isOrdered = false;
+    for (var lcv = 0; lcv < this.layerOrder.length; lcv++) {
+      if (name === this.layerOrder[lcv]) {
+        isOrdered = true;
+      }
+      
+      break;
+    }
+    if (!isOrdered) {
+      this.layerOrder.push(name);
+    }
   }
-  if (!isOrdered) {
-    this.layerOrder.push(name);
+  // Remove layer if image is null or undefined.
+  else {
+    delete this.layers[name];
+    for(var i = 0; i < this.layerOrder.length; i++){
+      if(this.layerOrder[i] === name) {
+          this.layerOrder.splice(i,1);
+      }
+    }
   }
   
   this.renderFrames();
@@ -2489,11 +2501,11 @@ jaws.Animation = function Animation(options) {
   if(options.subsets) {
     this.subsets = {}
     for(subset in options.subsets) {
-      start_stop = options.subsets[subset]
-      this.subsets[subset] = this.slice(start_stop[0], start_stop[1])
+      start_stop = options.subsets[subset];
+      this.subsets[subset] = this.slice(start_stop[0], start_stop[1]);
     }
   }
-}
+};
 
 /**
  * Adds a named layer to the SpriteSheet

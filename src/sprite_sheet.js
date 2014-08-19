@@ -42,23 +42,35 @@ jaws.SpriteSheet = function SpriteSheet(options) {
  *
  */
 jaws.SpriteSheet.prototype.setLayer = function(name, image) {
-  var img = jaws.isDrawable(image) ? image : jaws.assets.data[image];
-  if(this.scale_image) {
-    img = jaws.retroScaleImage(img, this.scale_image);
-  }
-  
-  this.layers[name] = img;
-  
-  var isOrdered = false;
-  for (var lcv = 0; lcv < this.layerOrder.length; lcv++) {
-    if (name === this.layerOrder[lcv]) {
-      isOrdered = true;
+  // Add layer if image is provided and valid
+  if (image) {
+    var img = jaws.isDrawable(image) ? image : jaws.assets.data[image];
+    if(this.scale_image) {
+      img = jaws.retroScaleImage(img, this.scale_image);
     }
     
-    break;
+    this.layers[name] = img;
+    
+    var isOrdered = false;
+    for (var lcv = 0; lcv < this.layerOrder.length; lcv++) {
+      if (name === this.layerOrder[lcv]) {
+        isOrdered = true;
+      }
+      
+      break;
+    }
+    if (!isOrdered) {
+      this.layerOrder.push(name);
+    }
   }
-  if (!isOrdered) {
-    this.layerOrder.push(name);
+  // Remove layer if image is null or undefined.
+  else {
+    delete this.layers[name];
+    for(var i = 0; i < this.layerOrder.length; i++){
+      if(this.layerOrder[i] === name) {
+          this.layerOrder.splice(i,1);
+      }
+    }
   }
   
   this.renderFrames();
