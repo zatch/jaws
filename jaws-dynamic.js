@@ -15,6 +15,7 @@
    load(root+"core.js")
   .then(root+"sprite.js")
   .then(root+"input.js", 
+        root+"uuid.js",
         root+"tmx-map.js",
         root+"gamepad.js", 
         root+"assets.js", 
