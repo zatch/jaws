@@ -1,4 +1,4 @@
-/* Built at 2014-08-20 19:11:47 -0400 */
+/* Built at 2014-09-06 16:57:23 -0700 */
 /**
  * @namespace JawsJS core functions.
  *
@@ -4876,13 +4876,21 @@ return jaws;
 
 })(jaws || {});var jaws = (function(jaws) {
 
-var inputMap = {};
-inputMap["Xbox 360"] = {
-	"joysticks": {
-		"left" : { x: 0, y: 1 },
-		"right": { x: 2, y: 3 }
+var inputMap = {
+	"default": {
+		"joysticks": {
+			"left" : { x: 0, y: 1 },
+			"right": { x: 2, y: 3 }
+		}
+	},
+	"Xbox 360": {
+		"joysticks": {
+			"left" : { x: 0, y: 1 },
+			"right": { x: 2, y: 3 }
+		}
 	}
 };
+
 // Account for inputs that are mapped incorrectly by the browser.
 if (navigator.userAgent.indexOf('Firefox') !== -1) {
 	inputMap["Xbox 360"].joysticks = {
