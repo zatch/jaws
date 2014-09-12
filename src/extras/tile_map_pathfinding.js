@@ -175,6 +175,68 @@ jaws.TileMap.prototype.lineOfSight = function(start_position, end_position, inve
   return true
 }
 
+jaws.TileMap.prototype.lineOfSightVoxel = function (target1, target2) {
+  var cellSizeX = this.cell_size[0],
+      cellSizeY = this.cell_size[1],
+      x1 = Math.round(target1.x) + (cellSizeX / 2),
+      y1 = Math.round(target1.y) + (cellSizeY / 2),
+      x2 = Math.round(target2.x) + (cellSizeX / 2),
+      y2 = Math.round(target2.y) + (cellSizeY / 2),
+      gridPosX = Math.round(x1 / cellSizeX),
+      gridPosY = Math.round(y1 / cellSizeY);
+
+  var cellList = [];
+
+  // Cell contents collidable?
+  if (this.cell(gridPosX, gridPosY).length) return false;
+
+  var dirX = x2 - x1;
+  var dirY = y2 - y1;
+  var distSqr = dirX * dirX + dirY * dirY;
+  if (distSqr < 0.00000001) return;
+
+  var nf = 1 / Math.sqrt(distSqr);
+  dirX *= nf;
+  dirY *= nf;
+
+  var deltaX = cellSizeX / Math.abs(dirX);
+  var deltaY = cellSizeY / Math.abs(dirY);
+
+  var maxX = gridPosX * cellSizeX - x1;
+  var maxY = gridPosY * cellSizeY - y1;
+  if (dirX >= 0) maxX += cellSizeX;
+  if (dirY >= 0) maxY += cellSizeY;
+  maxX /= dirX;
+  maxY /= dirY;
+
+  var stepX = dirX < 0 ? -1 : 1;
+  var stepY = dirY < 0 ? -1 : 1;
+  var gridGoalX = Math.round(x2 / cellSizeX);
+  var gridGoalY = Math.round(y2 / cellSizeY);
+  while (gridPosX != gridGoalX || gridPosY != gridGoalY) {
+  if (maxX < maxY) {
+    maxX += deltaX;
+    gridPosX += stepX;
+  }
+  else {
+    maxY += deltaY;
+    gridPosY += stepY;
+  }
+
+    // Cell contents collidable?
+    if (this.cell(gridPosX, gridPosY).length) {
+      return false;
+      // return cellList;
+    } else {
+      cellList.push({
+        "x": gridPosX,
+        "y": gridPosY
+      });
+    }
+  }
+  return true;
+};
+
 return jaws;
 })(jaws || {});
 
