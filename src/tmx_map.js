@@ -356,6 +356,8 @@ jaws.TMXMap = function (file, callback) {
             }
             var objName = object.attributes.getNamedItem("name");
             insobject.name = objName ? objName.nodeValue : "";
+            var objType = object.attributes.getNamedItem("type");
+            insobject.type = objType ? objType.nodeValue : "";
             // if gid
             if (object.attributes.getNamedItem("gid")) {
                 insobject.gid = parseInt(object.attributes.getNamedItem("gid").nodeValue);
