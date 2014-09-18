@@ -249,40 +249,84 @@ jaws.TMXMap = function (file, callback) {
             tileheightcount = parseInt(instileset.image.height / instileset.tileheight);
 
             // tiles
-            for (var y = 0; y < tileheightcount; y++) {
-                for (var x = 0; x < tilewidthcount; x++) {
+            if (tileheightcount && tilewidthcount) {
+                for (var y = 0; y < tileheightcount; y++) {
+                    for (var x = 0; x < tilewidthcount; x++) {
+                        var instile = {};
+                        instile.properties = [];
+                        instile.tileset = instileset;
+                        instile.width = instileset.tilewidth;
+                        instile.height = instileset.tileheight;
+    
+                        instile.x = x;
+                        instile.y = y;
+                        instile.px = x * instile.width + instileset.spacing + (x * instileset.margin);
+                        instile.py = y * instile.height + instileset.spacing + (y * instileset.margin);
+                        instile.gid = parseInt(instileset.firstgid + (x + (y * tilewidthcount)));
+    
+                        instile.image = _cutSprite(
+                            loader.get(instileset.image.source),
+                            instile.px,
+                            instile.py,
+                            instile.width,
+                            instile.height
+                        );
+                       
+                        self.tiles.push(instile);
+                    }
+                }
+    
+                // tiles properties
+                var tiles = tilesets[i].getElementsByTagName('tile');
+                for (var id = 0; id < tiles.length; id++) {
+                    var tileid = parseInt(tiles[id].attributes.getNamedItem("id").nodeValue);
+                    var tileproperties = tiles[id].getElementsByTagName('property');
+    
+                    _parseProperties(self.tiles[instileset.firstgid + tileid - 1], tileproperties);
+                }
+            }
+            else {
+                // tiles and tiles properties at the same time
+                var tiles = tilesets[i].getElementsByTagName('tile');
+                
+                
+                
+                for (var id = 0; id < tiles.length; id++) {
+                
+                    var tileid = parseInt(tiles[id].attributes.getNamedItem("id").nodeValue);
+                    var tileimage = tiles[id].getElementsByTagName("image")[0];
+                    var tilesource = tileimage.attributes.getNamedItem("source").nodeValue;
+                    var tilewidth = tileimage.attributes.getNamedItem("width").nodeValue;
+                    var tileheight = tileimage.attributes.getNamedItem("height").nodeValue;
+                    
                     var instile = {};
                     instile.properties = [];
                     instile.tileset = instileset;
-                    instile.width = instileset.tilewidth;
-                    instile.height = instileset.tileheight;
-
-                    instile.x = x;
-                    instile.y = y;
-                    instile.px = x * instile.width + instileset.spacing + (x * instileset.margin);
-                    instile.py = y * instile.height + instileset.spacing + (y * instileset.margin);
-                    instile.gid = parseInt(instileset.firstgid + (x + (y * tilewidthcount)));
-
+                    instile.width = tilewidth;
+                    instile.height = tileheight;
+    
+                    instile.x = 0;
+                    instile.y = 0;
+                    instile.px = 0; //x * instile.width + instileset.spacing + (x * instileset.margin);
+                    instile.py = 0; //y * instile.height + instileset.spacing + (y * instileset.margin);
+                    instile.gid = parseInt(instileset.firstgid) + tileid;
+                    
                     instile.image = _cutSprite(
-                        loader.get(instileset.image.source),
+                        loader.get(mapDirectory + tilesource),
                         instile.px,
                         instile.py,
                         instile.width,
                         instile.height
                     );
-                   
+                    
                     self.tiles.push(instile);
+                    
+                    var tileproperties = tiles[id].getElementsByTagName('property');
+    
+                    _parseProperties(self.tiles[instileset.firstgid + tileid - 1], tileproperties);
                 }
             }
-
-            // tiles properties
-            var tiles = tilesets[i].getElementsByTagName('tile');
-            for (var id = 0; id < tiles.length; id++) {
-                var tileid = parseInt(tiles[id].attributes.getNamedItem("id").nodeValue);
-                var tileproperties = tiles[id].getElementsByTagName('property');
-
-                _parseProperties(self.tiles[instileset.firstgid + tileid - 1], tileproperties);
-            }
+            
             self.tilesets.push(instileset);
         }
     }
