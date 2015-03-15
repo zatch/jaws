@@ -75,7 +75,7 @@ function scanGamepads() {
  */
 jaws.setupGamepadSupport = function(fps) {
 	// Chrome doesn't implement Gamepad events (yet?).
-	connectMethod = (navigator.webkitGetGamepads) ? "poll" : "event";
+	connectMethod = (navigator.webkitGetGamepads || navigator.getGamepads) ? "poll" : "event";
 	
 	if (connectMethod === "event") {
 		window.addEventListener("gamepadconnected", connectHandler);
