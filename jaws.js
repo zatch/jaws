@@ -1,4 +1,4 @@
-/* Built at 2014-09-17 20:12:49 -0700 */
+/* Built at 2015-03-15 23:49:26 -0400 */
 /**
  * @namespace JawsJS core functions.
  *
@@ -4399,10 +4399,20 @@ jaws.TMXMap = function (file, callback) {
     /**
      * Return the givenlayer as a jaws.TileMap.
      * @param  {String} layerName The layer to convert to a TileMap.
+     * @param  {Function} [tileClass] A constructor for the tiles.  If not 
+     *                                provided, jaws.Sprite will be used.  
+     *                                Constructors are passed an object with x, 
+     *                                y, width, height and image properties (a 
+     *                                la jaws.Sprite).  An additional 'properties' 
+     *                                object is added to the tile object if 
+     *                                propreties are defined for the tile in the 
+     *                                map data.
      * @return {TileMap}          A jaws.TileMap
      */
-    self.layerAsTileMap = function (layerName) {
-        var tileMap, i, ilen, tile, layer;
+    self.layerAsTileMap = function (layerName, tileClass) {
+        var tileMap, i, ilen, tile, layer, TileConstructor, newTileObj;
+
+        TileConstructor = typeof tileClass === 'function' ? tileClass : jaws.Sprite; 
 
         for(i=0, ilen=self.layers.length; i<ilen; i++) {
             if(self.layers[i].name === layerName) {
@@ -4421,13 +4431,28 @@ jaws.TMXMap = function (file, callback) {
 
         for(i=0, ilen=layer.tiles.length; i<ilen; i++) {
             tile = layer.tiles[i];
-            tileMap.push(new jaws.Sprite({
+
+            // Create our new tile object using the preferred constructor.
+            newTileObj = new TileConstructor({
                 x     : tile.px,
                 y     : tile.py,
                 width : tile.width,
                 height: tile.height,
                 image : tile.tile.image
-            }));
+            });
+
+            /* Add additional properties to new object.  We have to do this 
+             * after the constructor is called in the event that jaws.Sprite is
+             * used.  This is due to the fact that jaws uses the parseOptions()
+             * method when copying attributes to new objects and only pre-defined
+             * properties will be copied.
+             */
+            newTileObj.properties = tile.tile.properties;
+
+            // Add the new tile objec to the TileMap.
+            tileMap.push(newTileObj);
+
+
         }
         return tileMap;
     };
@@ -4575,7 +4600,7 @@ jaws.TMXMap = function (file, callback) {
         self.height = parseInt(map.attributes.getNamedItem("height").nodeValue);
         self.tilewidth = parseInt(map.attributes.getNamedItem("tilewidth").nodeValue);
         self.tileheight = parseInt(map.attributes.getNamedItem("tileheight").nodeValue);
-        self.properties = [];
+        self.properties = {};
         if (map.getElementsByTagName('properties').length) {
             var mapproperties = map.getElementsByTagName('properties')[0].getElementsByTagName('property');
             _parseProperties(self, mapproperties);
@@ -4628,7 +4653,7 @@ jaws.TMXMap = function (file, callback) {
                 for (var y = 0; y < tileheightcount; y++) {
                     for (var x = 0; x < tilewidthcount; x++) {
                         var instile = {};
-                        instile.properties = [];
+                        instile.properties = {};
                         instile.tileset = instileset;
                         instile.width = instileset.tilewidth;
                         instile.height = instileset.tileheight;
@@ -4675,7 +4700,7 @@ jaws.TMXMap = function (file, callback) {
                     var tileheight = tileimage.attributes.getNamedItem("height").nodeValue;
                     
                     var instile = {};
-                    instile.properties = [];
+                    instile.properties = {};
                     instile.tileset = instileset;
                     instile.width = tilewidth;
                     instile.height = tileheight;
@@ -5239,7 +5264,7 @@ function scanGamepads() {
  */
 jaws.setupGamepadSupport = function(fps) {
 	// Chrome doesn't implement Gamepad events (yet?).
-	connectMethod = (navigator.webkitGetGamepads) ? "poll" : "event";
+	connectMethod = (navigator.webkitGetGamepads || navigator.getGamepads) ? "poll" : "event";
 	
 	if (connectMethod === "event") {
 		window.addEventListener("gamepadconnected", connectHandler);
