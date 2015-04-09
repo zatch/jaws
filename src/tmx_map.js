@@ -72,7 +72,9 @@ jaws.TMXMap = function (file, callback) {
              * method when copying attributes to new objects and only pre-defined
              * properties will be copied.
              */
-            newTileObj.properties = tile.tile.properties;
+            for(var prop in tile.tile.properties) {
+                newTileObj[prop] = tile.tile.properties[prop];
+            }
 
             // Add the new tile objec to the TileMap.
             tileMap.push(newTileObj);

@@ -1,4 +1,4 @@
-/* Built at 2015-03-15 23:49:26 -0400 */
+/* Built at 2015-04-08 20:12:24 -0400 */
 /**
  * @namespace JawsJS core functions.
  *
@@ -4447,7 +4447,9 @@ jaws.TMXMap = function (file, callback) {
              * method when copying attributes to new objects and only pre-defined
              * properties will be copied.
              */
-            newTileObj.properties = tile.tile.properties;
+            for(var prop in tile.tile.properties) {
+                newTileObj[prop] = tile.tile.properties[prop];
+            }
 
             // Add the new tile objec to the TileMap.
             tileMap.push(newTileObj);
